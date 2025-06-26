@@ -522,6 +522,62 @@ function registerBlockTools(server: McpServer, bot: any) {
       }
     }
   );
+
+  server.tool(
+    "batch-place-blocks",
+    "Place multiple blocks efficiently",
+    {
+      blocks: z.array(z.object({
+        x: z.number().describe("X coordinate"),
+        y: z.number().describe("Y coordinate"),
+        z: z.number().describe("Z coordinate"),
+        blockType: z.string().describe("Type of block to place")
+      })).describe("Array of blocks to place")
+    },
+    async ({ blocks }): Promise<McpResponse> => {
+      try {
+        if (!bot.creative) {
+          return createResponse("Creative mode is not available. Cannot batch place blocks.");
+        }
+
+        const mcData = minecraftData(bot.version);
+        const blocksByName = mcData.blocksByName;
+        let placed = 0;
+        const errors: string[] = [];
+
+        for (const block of blocks) {
+          try {
+            // Validate block type exists
+            if (!blocksByName[block.blockType]) {
+              errors.push(`Unknown block type: ${block.blockType} at (${block.x}, ${block.y}, ${block.z})`);
+              continue;
+            }
+
+            // Place block with integer coordinates
+            await bot.chat(`/setblock ${Math.floor(block.x)} ${Math.floor(block.y)} ${Math.floor(block.z)} ${block.blockType}`);
+            placed++;
+
+            // Add small delay every 5 blocks to prevent server overload
+            if (placed % 5 === 0) {
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          } catch (error) {
+            errors.push(`Failed to place ${block.blockType} at (${block.x}, ${block.y}, ${block.z}): ${(error as Error).message}`);
+          }
+        }
+
+        // Construct response message
+        let response = `Batch placed ${placed}/${blocks.length} blocks`;
+        if (errors.length > 0) {
+          response += `\nErrors encountered:\n${errors.join('\n')}`;
+        }
+
+        return createResponse(response);
+      } catch (error) {
+        return createErrorResponse(error as Error);
+      }
+    }
+  );
 }
 
 // ========== Entity Interaction Tools ==========
