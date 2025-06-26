@@ -492,6 +492,36 @@ function registerBlockTools(server: McpServer, bot: any) {
       }
     }
   );
+
+  server.tool(
+    "force-place-block",
+    "Place block without physics constraints (creative mode)",
+    {
+      x: z.number().describe("X coordinate"),
+      y: z.number().describe("Y coordinate"),
+      z: z.number().describe("Z coordinate"),
+      blockType: z.string().describe("Type of block to place")
+    },
+    async ({ x, y, z, blockType }): Promise<McpResponse> => {
+      try {
+        if (!bot.creative) {
+          return createResponse("Creative mode is not available. Cannot force place blocks.");
+        }
+
+        const mcData = minecraftData(bot.version);
+        const blocksByName = mcData.blocksByName;
+
+        if (!blocksByName[blockType]) {
+          return createResponse(`Unknown block type: ${blockType}`);
+        }
+
+        await bot.chat(`/setblock ${Math.floor(x)} ${Math.floor(y)} ${Math.floor(z)} ${blockType}`);
+        return createResponse(`Force placed ${blockType} at (${Math.floor(x)}, ${Math.floor(y)}, ${Math.floor(z)})`);
+      } catch (error) {
+        return createErrorResponse(error as Error);
+      }
+    }
+  );
 }
 
 // ========== Entity Interaction Tools ==========
